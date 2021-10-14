@@ -4,6 +4,7 @@
 *.csv
 ### macOS ###
 # General
+.idea
 .DS_Store
 .AppleDouble
 .LSOverride
