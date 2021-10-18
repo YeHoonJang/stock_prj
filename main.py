@@ -2,57 +2,27 @@ import os
 import argparse
 import platform
 import pandas as pd
+import tqdm
 
-from crawling import crawling
+from crawling import crawling_news_list, crawling_news
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--search_keyword', type=str,
-                        default=None,
-                        help='Keyword to search')
-    parser.add_argument('--max_page', type=int,
-                        default=10,
-                        help='Maximum news page to search')
-    parser.add_argument('--exact_search', type=bool,
-                        default=True,
-                        help='Exact search or not')
-    parser.add_argument('--start_date', type=str,
-                        default=None,
-                        help='Start date to search, expected form: YYYYMMDD')
-    parser.add_argument('--end_date', type=str,
-                        default=None,
-                        help='End date to search, expected form: YYYYMMDD')
-    parser.add_argument('--search_list_path', type=str,
-                        default='./data/id_code.csv',
-                        help='Allowed press to search')
-    parser.add_argument('--allowed_press_path', type=str,
-                        default='./data/allowed_press.txt',
-                        help='Allowed press to search')
-    parser.add_argument('--excluded_press_path', type=str,
-                        default='./data/excluded_press.txt',
-                        help='Excluded press while searching')
-    parser.add_argument('--webdriver_path', type=str,
-                        default='./chromedriver',
-                        help='spectific webdriver to use for selenium')
-    parser.add_argument('--output_file_path', type=str,
-                        default='./result/result.csv',
-                        help='Result path')
+    parser.add_argument('--search_keyword', type=str, default=None, help='Keyword to search')
+    parser.add_argument('--start_date', type=str, default=None, help='Start date to search, expected form: YYYYMMDD')
+    parser.add_argument('--end_date', type=str, default=None, help='End date to search, expected form: YYYYMMDD')
+    parser.add_argument('--search_list_path', type=str, default='./data/id_code.csv', help='Allowed press to search')
+    parser.add_argument('--webdriver_path', type=str, default=None, help='spectific webdriver to use for selenium')
+    parser.add_argument('--output_file_path', type=str, default='./result', help='Result path')
+    parser.add_argument('--crawling_list_path', type=str, default='./data/crawling_list.csv', help='Crawling List Path')
+    parser.add_argument('--crawling_news_list', action='store_true')
+    parser.add_argument('--crawling_news', action='store_true')
 
     args = parser.parse_args()
 
     # Arguments preprocessing
-    # Check if only one of start_date and end_date is specified
-    if args.start_date is None and args.end_date is None:
-        pass
-    elif args.start_date is not None and args.end_date is not None:
-        pass
-    else:
-        print('Please specify both start_date and end_date or none of them')
-        exit(1)
-
     if args.webdriver_path is None:
-        # Use default webdriver
         if platform.system() == 'Darwin':
             if platform.machine() == 'x86_64':
                 args.webdriver_path = './webdriver/chromedriver_darwin_x86'
@@ -63,36 +33,46 @@ if __name__ == "__main__":
         elif platform.system() == 'Windows':
             args.webdriver_path = './webdriver/chromedriver.exe'
 
-    with open(args.allowed_press_path, 'r', encoding='UTF8') as f:
-        args.allowed_press = f.readlines()
-        args.allowed_press = [x.strip() for x in args.allowed_press]
-
-    with open(args.excluded_press_path, 'r', encoding='UTF8') as f:
-        args.excluded_press = f.readlines()
-        args.excluded_press = [x.strip() for x in args.excluded_press]
 
     # make dir for output_file_path if directory not exists
     if not os.path.exists(os.path.dirname(args.output_file_path)):
         os.makedirs(os.path.dirname(args.output_file_path))
-    
-    if args.search_list_path is None:
-        if args.search_keyword is None:
-            print('Please specify search keyword')
-            exit(1)
-        else:
-            args.search_keyword = args.search_keyword.replace(' ', '+')
-        
-        crawling(args)
-    else:
+
+    # url crawling
+    if args.crawling_news_list is True:
         df = pd.read_csv(args.search_list_path)
-        
+        if not os.path.isfile(args.crawling_list_path):
+            tmp = pd.DataFrame()
+            tmp.to_csv(args.crawling_list_path)
+
         for i in range(len(df)):
             args.search_keyword = df.loc[i, 'name']
-            # args.search_keyword = '대한제분'
             args.search_keyword = args.search_keyword.replace(' ', '+')
-            args.stock_num = df.loc[i, 'num']
-            args.output_file_path = './result/' + 'crawling_result_' + str(args.stock_num) + '_' + str(args.search_keyword) + '.csv'
+
+            date_list = pd.date_range(start='2018-01-02', end='2021-07-30')
+            with tqdm.tqdm(total=len(date_list), desc=f"{args.search_keyword} News List Crawling:") as date_bar:
+                for date in date_list:
+                    args.start_date = date.strftime("%Y%m%d")
+                    args.end_date = date.strftime("%Y%m%d")
+                    crawling_news_list(args)
+                    date_bar.update(1)
+
+
+    # news crawling
+    if args.crawling_news is True:
+        news_list = pd.read_csv(args.crawling_list_path).reset_index()
+        news_list.columns = ['name', 'url']
+
+        names = list(set(news_list['name']))
+        for name in names:
+            info_df = pd.read_csv(args.search_list_path)
+            num = info_df.loc[info_df['name']== name, 'num'].item()
+            kind = info_df.loc[info_df['name'] == name, 'class'].item()
+            urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
+            args.output_file_path = './result/' + 'crawling_result_' + str(num) + '_' + str(name) + '.csv'
+            crawling_news(args, name, num, kind, urls)
+
             
-            crawling(args)
+
 
 
