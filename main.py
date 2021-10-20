@@ -3,6 +3,7 @@ import argparse
 import platform
 import pandas as pd
 import tqdm
+import time
 
 from crawling import crawling_news_list, crawling_news
 
@@ -56,6 +57,7 @@ if __name__ == "__main__":
                     args.end_date = date.strftime("%Y%m%d")
                     crawling_news_list(args)
                     date_bar.update(1)
+        time.sleep(5)
 
 
     # news crawling
