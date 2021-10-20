@@ -52,7 +52,7 @@ def crawling_news_list(args):
 
     # 네이버 뉴스 url 저장
     news_df = pd.DataFrame(news_dict).T
-    news_df.to_csv(args.crawling_list_path, index=False, encoding='UTF8', mode='a', header=None)
+    news_df.to_csv(args.crawling_list_path, index=False, encoding='utf-8-sig', mode='a', header=None)
 
 
 

@@ -43,7 +43,7 @@ if __name__ == "__main__":
         df = pd.read_csv(args.search_list_path)
         if not os.path.isfile(args.crawling_list_path):
             tmp = pd.DataFrame(columns=['name', 'url'])
-            tmp.to_csv(args.crawling_list_path, index=False)
+            tmp.to_csv(args.crawling_list_path, index=False, encoding='utf-8-sig')
 
         for i in range(len(df)):
             args.search_keyword = df.loc[i, 'name']
