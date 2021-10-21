@@ -57,13 +57,12 @@ if __name__ == "__main__":
                     args.end_date = date.strftime("%Y%m%d")
                     crawling_news_list(args)
                     date_bar.update(1)
-        time.sleep(5)
+                    time.sleep(5)
 
 
     # news crawling
     if args.crawling_news is True:
-        news_list = pd.read_csv(args.crawling_list_path).reset_index()
-        news_list.columns = ['name', 'url']
+        news_list = pd.read_csv(args.crawling_list_path)
 
         names = list(set(news_list['name']))
         for name in names:
