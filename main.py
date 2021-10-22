@@ -70,9 +70,8 @@ if __name__ == "__main__":
             num = info_df.loc[info_df['name']== name, 'num'].item()
             kind = info_df.loc[info_df['name'] == name, 'class'].item()
             urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
-            args.output_file_path = './result/' + 'crawling_result_' + str(num) + '_' + str(name) + '.csv'
-            if not os.path.isfile(args.output_file_path):
-                os.mkdir(args.output_file_path)
+            args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
+            print(args.output_file_path)
             crawling_news(args, name, num, kind, urls)
 
             
