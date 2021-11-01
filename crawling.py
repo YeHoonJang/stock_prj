@@ -66,7 +66,7 @@ def crawling_news(args, name, num, kind, urls):
         for idx, url in enumerate(urls):
             news_dict[idx] = {}
             driver.get(url)
-            time.sleep(2)
+            time.sleep(3)
 
             # redirect 되는 기사 pass
             if driver.current_url.split("//")[1].startswith("news"):
@@ -142,12 +142,14 @@ def crawling_news(args, name, num, kind, urls):
                 # news_dict[idx]['reaction_want'] = reaction_want
             pbar.update(1)
 
-
-    news_df = pd.DataFrame(news_dict).T
-    news_df.dropna(axis=0, inplace=True)
-    if os.path.isfile(args.output_file_path):
-        news_df.to_csv(args.output_file_path, mode='a', index=False, header=None, encoding='utf-8-sig')
-    else:
-        news_df.to_csv(args.output_file_path, index=False, encoding='utf-8-sig')
+            columns = ['num', 'name', 'class', 'title', 'press', 'url', 'content', 'publish_date(8)', 'publish_time(4)',
+                       'modify_date(8)', 'modify_time(4)', 'publish_date', 'modify_date']
+            if idx%10==0:
+                news_df = pd.DataFrame(news_dict).T
+                news_df.dropna(axis=0, inplace=True)
+                if os.path.isfile(args.output_file_path):
+                    news_df.to_csv(args.output_file_path, columns=columns, mode='a', index=False, header=None, encoding='utf-8-sig')
+                else:
+                    news_df.to_csv(args.output_file_path, columns=columns, index=False, encoding='utf-8-sig')
 
     driver.close()
