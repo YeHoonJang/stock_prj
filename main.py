@@ -71,7 +71,6 @@ if __name__ == "__main__":
             kind = info_df.loc[info_df['name'] == name, 'class'].item()
             urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
             args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
-            print(args.output_file_path)
             crawling_news(args, name, num, kind, urls)
 
             
