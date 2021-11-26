@@ -18,6 +18,8 @@ if __name__ == "__main__":
     parser.add_argument('--output_file_path', type=str, default='./result', help='Result path')
     parser.add_argument('--crawling_list_path', type=str, default='./data/crawling_list.csv', help='Crawling List Path')
     parser.add_argument('--start_index', type=int, default=0, help='Crawling Start index')
+    parser.add_argument('--dart_class', type=str, default=None, help='DART Class ex) "배당", "장래사업계획", "영업잠정실적"')
+    parser.add_argument('--dart_id', type=int, default=None, help='DART id')
     parser.add_argument('--crawling_news_list', action='store_true')
     parser.add_argument('--crawling_news', action='store_true')
 
@@ -42,37 +44,44 @@ if __name__ == "__main__":
 
     # url crawling
     if args.crawling_news_list is True:
+        dart_df = pd.read_csv("./data/dart_data.csv") 
+        dart_df = dart_df[dart_df['구분']==args.dart_class]
         df = pd.read_csv(args.search_list_path)
+
         if not os.path.isfile(args.crawling_list_path):
-            tmp = pd.DataFrame(columns=['name', 'url'])
+            tmp = pd.DataFrame(columns=['name', 'url', 'id'])
             tmp.to_csv(args.crawling_list_path, index=False, encoding='utf-8-sig')
 
-        for i in range(len(df)):
-            args.search_keyword = df.loc[i, 'name']
-            # args.search_keyword = args.search_keyword.replace(' ', '+')
-
-            date_list = pd.date_range(start='2018-01-02', end='2021-07-30')
-            with tqdm.tqdm(total=len(date_list), desc=f"{args.search_keyword} News List Crawling:") as date_bar:
-                for date in date_list:
-                    args.start_date = date.strftime("%Y%m%d")
-                    args.end_date = date.strftime("%Y%m%d")
-                    crawling_news_list(args)
-                    date_bar.update(1)
-                    time.sleep(5)
+        dart_class_dict = {"배당": "배당", "장래사업계획": "장래 사업 경영 계획", "영업잠정실적": "영업 잠정 실적"}
+        for i in range(len(dart_df)):
+            # id 0 / 날짜 2 / 기업명 6 / 구분 7
+            args.search_keyword = dart_df.iloc[i, 6]
+            date = dart_df.iloc[i, 2]
+            args.dart_id = dart_df.iloc[i, 0]
+            args.start_date = date.replace("-", "")
+            args.end_date = date.replace("-", "")
+            print(f"Start Crawling {args.search_keyword} News Url...")
+            crawling_news_list(args)
+            time.sleep(3)
 
 
     # news crawling
     if args.crawling_news is True:
         news_list = pd.read_csv(args.crawling_list_path)
-
         names = list(set(news_list['name']))
-        for name in names:
+        dart_df = pd.read_csv("./data/dart_data.csv")
+
+        for i in range(len(news_list)):
+            # name 0 / url 1 / id 2
             info_df = pd.read_csv(args.search_list_path)
+            name = news_list.iloc[i, 0]
+            args.dart_id = news_list.iloc[i, 2]
+            url = [news_list.iloc[i, 1]]
             num = info_df.loc[info_df['name']== name.replace('+', ' '), 'num'].item()
             kind = info_df.loc[info_df['name'] == name.replace('+', ' '), 'class'].item()
-            urls = [url for url in news_list.loc[news_list['name'] == name.replace('+', ' '), 'url']]
-            args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
-            crawling_news(args, name, num, kind, urls[args.start_index:])
+            args.output_file_path = os.path.join(os.getcwd(), 'result_dart', f'crawling_result_{str(num)}_{str(name)}.csv')
+            print(f"Start Crawling {name} News ...")
+            crawling_news(args, name, num, kind, url)
 
             
 
