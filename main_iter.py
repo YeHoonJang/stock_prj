@@ -4,6 +4,7 @@ import platform
 import pandas as pd
 import tqdm
 import time
+import glob
 
 from crawling import crawling_news_list, crawling_news
 
@@ -17,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--webdriver_path', type=str, default=None, help='spectific webdriver to use for selenium')
     parser.add_argument('--output_file_path', type=str, default='./result', help='Result path')
     parser.add_argument('--crawling_list_path', type=str, default='./data/crawling_list.csv', help='Crawling List Path')
+    parser.add_argument('--start_index', type=int, default=0, help='Crawling Start index')
     parser.add_argument('--crawling_news_list', action='store_true')
     parser.add_argument('--crawling_news', action='store_true')
 
@@ -62,17 +64,30 @@ if __name__ == "__main__":
 
     # news crawling
     if args.crawling_news is True:
-        news_list = pd.read_csv(args.crawling_list_path)
+        for file in glob.glob("./data/new_url/000*_*.csv"):
+            print(file)
+            args.crawling_list_path = file
+            news_list = pd.read_csv(args.crawling_list_path)
 
-        names = list(set(news_list['name']))
-        for name in names:
-            info_df = pd.read_csv(args.search_list_path)
-            num = info_df.loc[info_df['name']== name, 'num'].item()
-            kind = info_df.loc[info_df['name'] == name, 'class'].item()
-            urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
-            args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
-            crawling_news(args, name, num, kind, urls)
-
+            names = list(set(news_list['name']))
+            for name in names:
+                info_df = pd.read_csv(args.search_list_path)
+                replace_name = name.replace('+', ' ')
+                nums = info_df.loc[info_df['name']== replace_name, 'num']
+                print("len nums:", len(nums))
+                if len(nums) == 1:
+                    num = nums.item()
+                    kind = info_df.loc[info_df['name'] == replace_name, 'class'].item()
+                    urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
+                    args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
+                    crawling_news(args, name, num, kind, urls[args.start_index:])
+                else:
+                    num = nums.tolist()
+                    kind = info_df.loc[info_df['name'] == replace_name, 'class'].tolist()
+                    print(num, kind)
+                    urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
+                    args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
+                    crawling_news(args, name, num, kind, urls[args.start_index:])
             
 
 

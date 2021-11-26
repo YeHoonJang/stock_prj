@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # news crawling
     if args.crawling_news is True:
-        for file in glob.glob("./data/new_url/0000****_*.csv"):
+        for file in glob.glob("./data/new_url/0001****_*.csv"):
             print(file)
             args.crawling_list_path = file
             news_list = pd.read_csv(args.crawling_list_path)
