@@ -4,12 +4,13 @@ import platform
 import pandas as pd
 import tqdm
 import time
+import glob
 
 from crawling import crawling_news_list, crawling_news
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
+    
     parser.add_argument('--search_keyword', type=str, default=None, help='Keyword to search')
     parser.add_argument('--start_date', type=str, default=None, help='Start date to search, expected form: YYYYMMDD')
     parser.add_argument('--end_date', type=str, default=None, help='End date to search, expected form: YYYYMMDD')
@@ -49,30 +50,44 @@ if __name__ == "__main__":
 
         for i in range(len(df)):
             args.search_keyword = df.loc[i, 'name']
-            # args.search_keyword = args.search_keyword.replace(' ', '+')
+            args.search_keyword = args.search_keyword.replace(' ', '+')
 
             date_list = pd.date_range(start='2018-01-02', end='2021-07-30')
-            for date in date_list:
-                args.start_date = date.strftime("%Y%m%d")
-                args.end_date = date.strftime("%Y%m%d")
-                crawling_news_list(args)
-                date_bar.update(1)
-                time.sleep(5)
+            with tqdm.tqdm(total=len(date_list), desc=f"{args.search_keyword} News List Crawling:") as date_bar:
+                for date in date_list:
+                    args.start_date = date.strftime("%Y%m%d")
+                    args.end_date = date.strftime("%Y%m%d")
+                    crawling_news_list(args)
+                    date_bar.update(1)
+                    time.sleep(5)
 
 
     # news crawling
     if args.crawling_news is True:
-        news_list = pd.read_csv(args.crawling_list_path)
+        for file in glob.glob("./data/new_url/0000****_*.csv"):
+            print(file)
+            args.crawling_list_path = file
+            news_list = pd.read_csv(args.crawling_list_path)
 
-        names = list(set(news_list['name']))
-        for name in names:
-            info_df = pd.read_csv(args.search_list_path)
-            num = info_df.loc[info_df['name']== name.replace('+', ' '), 'num'].item()
-            kind = info_df.loc[info_df['name'] == name.replace('+', ' '), 'class'].item()
-            urls = [url for url in news_list.loc[news_list['name'] == name.replace('+', ' '), 'url']]
-            args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
-            crawling_news(args, name, num, kind, urls[args.start_index:])
-
+            names = list(set(news_list['name']))
+            for name in names:
+                info_df = pd.read_csv(args.search_list_path)
+                replace_name = name.replace('+', ' ')
+                nums = info_df.loc[info_df['name']== replace_name, 'num']
+                print("len nums:", len(nums))
+                if len(nums) == 1:
+                    num = nums.item()
+                    kind = info_df.loc[info_df['name'] == replace_name, 'class'].item()
+                    urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
+                    args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
+                    crawling_news(args, name, num, kind, urls[args.start_index:])
+                else:
+                    num = nums.tolist()
+                    kind = info_df.loc[info_df['name'] == replace_name, 'class'].tolist()
+                    print(num, kind)
+                    urls = [url for url in news_list.loc[news_list['name'] == name, 'url']]
+                    args.output_file_path = os.path.join(os.getcwd(), 'result', f'crawling_result_{str(num)}_{str(name)}.csv')
+                    crawling_news(args, name, num, kind, urls[args.start_index:])
             
 
 

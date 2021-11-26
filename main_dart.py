@@ -52,12 +52,13 @@ if __name__ == "__main__":
             # args.search_keyword = args.search_keyword.replace(' ', '+')
 
             date_list = pd.date_range(start='2018-01-02', end='2021-07-30')
-            for date in date_list:
-                args.start_date = date.strftime("%Y%m%d")
-                args.end_date = date.strftime("%Y%m%d")
-                crawling_news_list(args)
-                date_bar.update(1)
-                time.sleep(5)
+            with tqdm.tqdm(total=len(date_list), desc=f"{args.search_keyword} News List Crawling:") as date_bar:
+                for date in date_list:
+                    args.start_date = date.strftime("%Y%m%d")
+                    args.end_date = date.strftime("%Y%m%d")
+                    crawling_news_list(args)
+                    date_bar.update(1)
+                    time.sleep(5)
 
 
     # news crawling
