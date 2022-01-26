@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import re
 import os
 import requests
@@ -10,9 +9,9 @@ import time
 
 headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15"}
 
-def crawling_news_list(args):
+def crawling_news_list(args, dart_class):
     # url 설정
-    search_keyword = f"{(args.search_keyword.replace(' ', '+')).replace('&', '%26')}"
+    search_keyword = f"{(args.search_keyword.replace(' ', '+')).replace('&', '%26')}+{dart_class}"
     news_url = f"https://search.naver.com/search.naver?where=news&sm=tab_jum&query={search_keyword}&nso=p%3Afrom{args.start_date}to{args.end_date}"
 
     news_dict = {}
@@ -24,7 +23,6 @@ def crawling_news_list(args):
         page_url = news_url + f"&start={current_page}"
         req = requests.get(page_url, headers=headers)
         soup = BeautifulSoup(req.text, 'html.parser')
-
         table = soup.find('ul', {'class' : 'list_news'})
 
         # 해당 날짜에 기사가 없는 경우 pass
@@ -33,18 +31,20 @@ def crawling_news_list(args):
         li_list = table.find_all('li', {'id' : re.compile('sp_nws.*')})
         area_list = [li.find('div', {'class' : 'news_area'}) for li in li_list]
         info_list = [area.find('div', {'class' : 'info_group'}) for area in area_list] # 언론사 & 날짜 리스트
-        title_list = [area.find('a', {'class' : 'news_tit'}) for area in area_list]
+        # title_list = [area.find('a', {'class' : 'news_tit'}) for area in area_list]
 
 
         # 네이버뉴스 href 가 있으면 저장
         for i in range(len(area_list)):
             for info in info_list[i].find_all('a'):
-                # 뉴스 제목에 기업 이름 있고, 뉴스 카테고리만 수집 (스포츠, 연예, 날씨 등 제외)
-                if args.search_keyword in title_list[i].text and info.get('href').split("//")[1].startswith("news.naver") and info.get('href') not in crawled_news:
+                # 뉴스 카테고리만 수집 (스포츠, 연예, 날씨 등 제외)
+                # keyword_list = [args.search_keyword, args.dart_class]
+                if info.get('href').split("//")[1].startswith("news.naver") and info.get('href') not in crawled_news:
                     crawled_news.append(info.get('href'))
                     news_dict[idx] = {}
                     news_dict[idx]['name'] = args.search_keyword
                     news_dict[idx]['url'] = info.get('href')
+                    news_dict[idx]['id'] = args.dart_id
                     idx += 1
 
             # 페이지 내 마지막 기사 url 까지 저장 후 처리
@@ -55,13 +55,14 @@ def crawling_news_list(args):
                     crawling = 0
 
     # 네이버 뉴스 url 저장
-    news_df = pd.DataFrame(news_dict).T
-    news_df.to_csv(args.crawling_list_path, index=False, encoding='utf-8-sig', mode='a', header=None)
+    columns = ['name', 'url', 'id']
+    if news_dict:
+        news_df = pd.DataFrame(news_dict).T
+        news_df.to_csv(args.crawling_list_path, index=False, columns=columns, encoding='utf-8-sig', mode='a', header=None)
 
 
 
 def crawling_news(args, name, num, kind, urls):
-    print("url length:", len(urls))
     news_dict = {}
     options = webdriver.ChromeOptions()
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
@@ -72,7 +73,7 @@ def crawling_news(args, name, num, kind, urls):
             try:
                 news_dict[idx] = {}
                 driver.get(url)
-                time.sleep(3)
+                # time.sleep(2)
 
                 # redirect 되는 기사 pass
                 if driver.current_url.split("//")[1].startswith("news"):
@@ -141,6 +142,7 @@ def crawling_news(args, name, num, kind, urls):
                     news_dict[idx]['modify_time(4)'] = modify_time
                     news_dict[idx]['publish_date'] = f"{publish_date} {publish_time}"
                     news_dict[idx]['modify_date'] = f"{modify_date} {modify_time}"
+                    news_dict[idx]['id']=args.dart_id
                     # news_dict[idx]['reaction_good'] = reaction_good
                     # news_dict[idx]['reaction_warm'] = reaction_warm
                     # news_dict[idx]['reaction_sad'] = reaction_sad
@@ -148,19 +150,19 @@ def crawling_news(args, name, num, kind, urls):
                     # news_dict[idx]['reaction_want'] = reaction_want
                 pbar.update(1)
 
-                if idx%1000==0 or idx==(len(urls))-1:
-                    columns = ['num', 'name', 'class', 'title', 'press', 'url', 'content', 'publish_date(8)',
-                               'publish_time(4)',
-                               'modify_date(8)', 'modify_time(4)', 'publish_date', 'modify_date']
-                    news_df = pd.DataFrame(news_dict).T
-                    news_df.dropna(axis=0, inplace=True)
-                    if os.path.isfile(args.output_file_path):
-                        news_df.to_csv(args.output_file_path, columns=columns, mode='a', index=False, header=None,
-                                       encoding='utf-8-sig')
-                    else:
-                        news_df.to_csv(args.output_file_path, columns=columns, index=False, encoding='utf-8-sig')
-                    news_dict = {}
+
+                columns = ['num', 'name', 'class', 'title', 'press', 'url', 'content', 'publish_date(8)',
+                           'publish_time(4)', 'modify_date(8)', 'modify_time(4)', 'publish_date', 'modify_date', 'id']
+                news_df = pd.DataFrame(news_dict).T
+                news_df.dropna(axis=0, inplace=True)
+                if os.path.isfile(args.output_file_path):
+                    news_df.to_csv(args.output_file_path, columns=columns, mode='a', index=False, header=None,
+                                   encoding='utf-8-sig')
+                else:
+                    news_df.to_csv(args.output_file_path, columns=columns, index=False, encoding='utf-8-sig')
+                news_dict = {}
             except:
+                print("except error")
                 pbar.update(1)
 
 
